@@ -23,7 +23,7 @@ var configuration = JSON.parse(
 
 const formId = configuration.formId.id;
 
-var access_token = 'EAAXxIatCqX4BAHC6aZAUscR9u50xQ9HDuGeVx4ZBDIGF8npglqjKfKjkqZACl8rrt4uU7MkaghZApSdqiKDuxnn1meeFiPcBxxzKC8QRdXOotpOlWyzntUIWrTKwxTQvFHbceZBbyjcPY5KZBCuQz4fYr0weqL622G867VvVp5uAZDZD'
+var access_token = 'EAAXxIatCqX4BADnexTUrPxb1c8VOgVau4Sx1buTL3aFDz0yewqHEPTHxiNtlleO5Ls5nG6UAXFnZAYMzN8aykqZAL6EqBMEbkLZBc9aAuxoGAKf0KuU6id2Tf8rUzwZC6DwKALeQ6seRtbtMH19VxNV3EALZBf5QMyqjZBPWsZBEgZDZD';
 
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
@@ -122,8 +122,9 @@ function loadLeadDetails(leadId, callback) {
 
 //TODO: finish
 function refreshToken() {
-    return 'EAAXxIatCqX4BAIzO00F2TSHzjSbS8MX3y9z4ARqa5Xow4ly0SaBZBKWBteCo3pbPXHya9qbLxcedD3RZC8Ajk2ezfZAPa5PfphVEblQLah0U9KbrLEuWpUy3TRZC10fgQSmnEF12BMX0mcQI6p7acjZBR6qzPqo1fxQZBCLkSzxAZDZD';
+ return 'EAAXxIatCqX4BAHYNtgOSKbPZAZCFpIZAuZC6fZCfcw1362DZCim1N6oFwUDQkjS9ZB2CS3F0jf6u1ZAsfugrxbQeNGb7OdMHj1IUZCyxV7c9GmDYncZA8BCmdLjXjqGGOiLkOq3hbxrmM09QuM1UEYsBaOcLpZANgnRGZAxZCaauU24ZCGuAZDZD';
 }
+
 
 //TODO: refactor
 function buildUrl(leadId) {
@@ -161,14 +162,13 @@ function sendMail(email) {
 
 /**@prod*/
 app.get('/platform', function (req, res) {
-    res.sendFile(path.join(__dirname + '../view/platform.html'));
+    res.sendFile(path.resolve('../view/platform.html'));
 });
 
 
-// var options = {
-//     key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
-//     cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
-// };
-//
-// https.createServer(options, app).listen(8443);
-http.createServer(app).listen(8000);
+ var options = {
+     key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
+     cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
+ };
+https.createServer(options, app).listen(8443);
+//http.createServer(app).listen(8000);
