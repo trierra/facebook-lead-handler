@@ -44,7 +44,7 @@ app.get('/webhook/', function (req, res) {
 app.post('/webhook/', function (req, res) {
 
     var leadId = req.body.entry[0].changes[0].value.leadgen_id;
-    log.log('Loaded lead ' + leadId);
+    log.log('Loaded lead ' + leadId );
 
     if (leadId) {
         loadLeadDetails(leadId, function (data) {
@@ -56,6 +56,8 @@ app.post('/webhook/', function (req, res) {
                         break;
                     }
                 }
+                log.log('Lead details: id ' + leadId + ', email: ' + email + ' at ' + new Date());
+
                 sendMail(email);
             }
         });
@@ -154,13 +156,12 @@ function sendMail(email) {
             return log.error(error);
         }
         log.log('Message sent: to ' + email + ' ' + info.response);
-        log.warn('Message sent: to ' + email + ' ' + info.response);
     });
 }
 
 /**@prod*/
 app.get('/platform', function (req, res) {
-    res.sendFile(path.join(__dirname + '/platform.html'));
+    res.sendFile(path.join(__dirname + '../view/platform.html'));
 });
 
 
