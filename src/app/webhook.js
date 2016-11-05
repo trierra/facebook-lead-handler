@@ -8,22 +8,20 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const path = require('path');
+const nodemailer = require('nodemailer');
 var sesTransport = require('nodemailer-ses-transport');
-
 const log = require('winston');
+
 log.level = 'debug';
 log.add(log.transports.File, {filename: 'logfile.log'});
 
-const nodemailer = require('nodemailer');
 const configFile = '../config/config.json';
 
 var configuration = JSON.parse(
     fs.readFileSync(configFile)
 );
 
-const formId = configuration.formId.id;
-
-var access_token = 'EAAXxIatCqX4BADnexTUrPxb1c8VOgVau4Sx1buTL3aFDz0yewqHEPTHxiNtlleO5Ls5nG6UAXFnZAYMzN8aykqZAL6EqBMEbkLZBc9aAuxoGAKf0KuU6id2Tf8rUzwZC6DwKALeQ6seRtbtMH19VxNV3EALZBf5QMyqjZBPWsZBEgZDZD';
+var longToken = configuration.longToken;
 
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
@@ -44,7 +42,7 @@ app.get('/webhook/', function (req, res) {
 app.post('/webhook/', function (req, res) {
 
     var leadId = req.body.entry[0].changes[0].value.leadgen_id;
-    log.log('Loaded lead ' + leadId );
+    log.info('Loaded lead ' + leadId);
 
     if (leadId) {
         loadLeadDetails(leadId, function (data) {
@@ -56,7 +54,7 @@ app.post('/webhook/', function (req, res) {
                         break;
                     }
                 }
-                log.log('Lead details: id ' + leadId + ', email: ' + email + ' at ' + new Date());
+                log.info('Lead details: id ' + leadId + ', email: ' + email + ' at ' + new Date().getTime());
 
                 sendMail(email);
             }
@@ -67,8 +65,7 @@ app.post('/webhook/', function (req, res) {
 /**
  * test
  */
-app.get('/parse', function (req, resp) {
-
+app.get('/parse', function (req, res) {
     loadLeadDetails('leadid', function (data) {
         if (data) {
             var email = '';
@@ -77,11 +74,29 @@ app.get('/parse', function (req, resp) {
                     email = data.field_data[element].values[0];
                 }
             }
-            log.log('Email from lead: ', email);
+            log.info('Email from lead: ', email);
             sendMail(email);
         }
     });
+});
 
+app.post('/callback/', function (req, res) {
+    var token = req.body.access_token;
+    log.info('Getting long-lived token at ' + new Date().getTime());
+
+    //TODO: move to separate function
+    var uri = 'https://graph.facebook.com/v2.8/oauth/access_token?grant_type=fb_exchange_token&client_id=' + configuration.fbAuth.clientId
+        + '&client_secret=' + configuration.fbAuth.secret + '&fb_exchange_token=' + token;
+
+    var options = {
+        url: uri
+    };
+
+    request(options, function (error, response, body) {
+        if (!error && response.status == 200) {
+            log.warn('Long-term access token retrieved: ' + body + ' at ' + new Date().getTime());
+        }
+    })
 });
 
 /**
@@ -90,10 +105,8 @@ app.get('/parse', function (req, resp) {
  * @param callback
  */
 function loadLeadDetails(leadId, callback) {
-    log.warn('Loading details...');
+    log.info('Loading details... for ' + leadId);
     var url = buildUrl(leadId);
-
-    console.log(url);
 
     var options = {
         url: url,
@@ -102,16 +115,22 @@ function loadLeadDetails(leadId, callback) {
 
     request(options, function (error, response, body) {
         if (!error && response.statusCode == 200) {
-            log.warn(body);
             var data = JSON.parse(body);
             if (data.error) {
                 if (data.error.message.includes('Error validating access token')) {
-                    log.warn('Session has expired, refreshing token on ' + new Date());
-                    access_token = refreshToken();
-                    loadLeadDetails(leadId, callback);
+                    log.warn('Session has expired, refreshing token on ' + new Date().getTime());
+
+                    var mailOptions = {
+                        from: configuration.smtp.service,
+                        to: configuration.smtp.admin, //temporary for test mode
+                        subject: 'Session has expired',
+                        text: 'Error token at ' + new Date().getTime() + configuration.tokenErrorMail
+                    };
+
+                    sendMail(configuration.smtp.admin, mailOptions);
+
                 } else {
-                    log.warn(data.error.message);
-                    console.log(data.error.message);
+                    log.error(data.error.message);
                 }
             } else {
                 callback(data)
@@ -120,21 +139,15 @@ function loadLeadDetails(leadId, callback) {
     });
 }
 
-//TODO: finish
-function refreshToken() {
- return 'EAAXxIatCqX4BAHYNtgOSKbPZAZCFpIZAuZC6fZCfcw1362DZCim1N6oFwUDQkjS9ZB2CS3F0jf6u1ZAsfugrxbQeNGb7OdMHj1IUZCyxV7c9GmDYncZA8BCmdLjXjqGGOiLkOq3hbxrmM09QuM1UEYsBaOcLpZANgnRGZAxZCaauU24ZCGuAZDZD';
-}
-
 
 //TODO: refactor
 function buildUrl(leadId) {
-    return 'https://graph.facebook.com/v2.8/' + leadId + '?access_token=' + access_token +
+    return 'https://graph.facebook.com/v2.8/' + leadId + '?access_token=' + longToken +
         '&format=json&method=get&pretty=0&suppress_http_code=1';
 }
 
-function sendMail(email) {
-    log.log('sending mail to ' + email);
-    log.warn('sending mail to ' + email);
+function sendMail(email, options) {
+    log.info('sending mail to ' + email);
 
     var transporter = nodemailer.createTransport(sesTransport({
         accessKeyId: configuration.smtp.accessKey,
@@ -151,12 +164,16 @@ function sendMail(email) {
         text: 'With email ' + email
     };
 
+    if (!options) {
+        options = mailOptions;
+    }
+
 // send mail with defined transport object
-    transporter.sendMail(mailOptions, function (error, info) {
+    transporter.sendMail(options, function (error, info) {
         if (error) {
             return log.error(error);
         }
-        log.log('Message sent: to ' + email + ' ' + info.response);
+        log.info('Message sent: to ' + email + ' ' + info.response);
     });
 }
 
@@ -166,9 +183,11 @@ app.get('/platform', function (req, res) {
 });
 
 
- var options = {
-     key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
-     cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
- };
+var options = {
+    key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
+};
 https.createServer(options, app).listen(8443);
-//http.createServer(app).listen(8000);
+
+//uncomment for localhost
+// http.createServer(app).listen(8000);

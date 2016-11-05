@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 </head>
 <body>
 
@@ -30,6 +31,11 @@
                 'post',
                 {access_token: page_access_token},
                 function(response) {
+                    $.ajax({
+                        type: "POST",
+                        url: "https://willingbot.online:8443/callback",
+                        data: {access_token: page_access_token}
+                    });
                     console.log('Successfully subscribed page', response);
                 });
     }
