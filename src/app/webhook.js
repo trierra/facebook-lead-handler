@@ -11,6 +11,8 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 var sesTransport = require('nodemailer-ses-transport');
 const log = require('winston');
+var MongoClient = require('mongodb').MongoClient
+    , assert = require('assert');
 
 log.level = 'debug';
 log.add(log.transports.File, {filename: 'logfile.log'});
@@ -55,6 +57,11 @@ app.post('/webhook/', function (req, res) {
                     }
                 }
                 log.info('Lead details: id ' + leadId + ', email: ' + email + ' at ' + new Date().getTime());
+
+                db.collection('lead').save(data, (err, result) => {
+                    if (err) return console.log(err);
+                    console.log('saved to database');
+                });
 
                 sendMail(email);
             }
@@ -183,11 +190,39 @@ app.get('/platform', function (req, res) {
 });
 
 
-var options = {
-    key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
-    cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
-};
-https.createServer(options, app).listen(8443);
+var insertDocuments = function(db, callback) {
+    // Get the documents collection
+    var collection = db.collection('documents');
+    // Insert some documents
+    collection.insertMany([
+        {a : 1}, {a : 2}, {a : 3}
+    ], function(err, result) {
+        assert.equal(err, null);
+        assert.equal(3, result.result.n);
+        assert.equal(3, result.ops.length);
+        console.log("Inserted 3 documents into the collection");
+        callback(result);
+    });
+}
+
+// Connection URL
+var url = 'mongodb://localhost:27017/fbhandler';
+
+// Use connect method to connect to the server
+MongoClient.connect(url, function(err, db) {
+    assert.equal(null, err);
+    console.log("Connected successfully to server");
+    insertDocuments(db, function() {
+        db.close();
+    });
+});
+
+
+// var options = {
+//     key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
+//     cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
+// };
+// https.createServer(options, app).listen(8443);
 
 //uncomment for localhost
-// http.createServer(app).listen(8000);
+http.createServer(app).listen(8000);
