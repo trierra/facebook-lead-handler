@@ -118,7 +118,7 @@ app.get('/parse', function (req, res) {
         emailSent: false
     };
 
-    loadLeadDetails('219207135175287', function (data) {
+    loadLeadDetails('219459831816684', function (data) {
             if (data) {
                 leadDetails.createdTime = data.created_time;
                 leadDetails.id = data.id;
@@ -267,7 +267,7 @@ app.get('/platform', function (req, res) {
 
 var insertLeads = function (db, data, callback) {
     var collection = db.collection('leads');
-    collection.findOne({'id': data.id}, function (err, lead) {
+    collection.findOne({'email': data.email}, function (err, lead) {
         assert.equal(err, null);
         if (lead) {
             log.info(data.id + ' Lead exists ' + lead.email);
@@ -300,14 +300,14 @@ MongoClient.connect(mongoUrl, function (err, db) {
     log.info("Connected successfully to mongodb server");
     database = db;
 
-    var options = {
-        key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
-        cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
-    };
-    https.createServer(options, app).listen(8443);
+    // var options = {
+    //     key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
+    //     cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
+    // };
+    // https.createServer(options, app).listen(8443);
 
 //uncomment for localhost
-//     http.createServer(app).listen(8000);
+    http.createServer(app).listen(8000);
 });
 
 
