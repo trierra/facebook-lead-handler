@@ -13,6 +13,7 @@ var sesTransport = require('nodemailer-ses-transport');
 const log = require('winston');
 var MongoClient = require('mongodb').MongoClient
     , assert = require('assert');
+var database = '';
 
 log.level = 'debug';
 log.add(log.transports.File, {filename: 'logfile.log'});
@@ -50,20 +51,16 @@ app.post('/webhook/', function (req, res) {
         loadLeadDetails(leadId, function (data) {
             if (data) {
                 var email = '';
-                for (var i in data.field_data) {
-                    if (data.field_data[i].name === 'email') {
-                        email = data.field_data[i].values[0];
-                        break;
+                for (var element in data.field_data) {
+                    if (data.field_data[element].name === 'email') {
+                        email = data.field_data[element].values[0];
                     }
                 }
-                log.info('Lead details: id ' + leadId + ', email: ' + email + ' at ' + new Date().getTime());
-
-                db.collection('lead').save(data, (err, result) => {
-                    if (err) return console.log(err);
-                    console.log('saved to database');
+                insertLeads(database, data, function (result) {
+                    if (result) {
+                        sendMail(email);
+                    }
                 });
-
-                sendMail(email);
             }
         });
     }
@@ -73,7 +70,7 @@ app.post('/webhook/', function (req, res) {
  * test
  */
 app.get('/parse', function (req, res) {
-    loadLeadDetails('leadid', function (data) {
+    loadLeadDetails('someLeadId', function (data) {
         if (data) {
             var email = '';
             for (var element in data.field_data) {
@@ -81,8 +78,14 @@ app.get('/parse', function (req, res) {
                     email = data.field_data[element].values[0];
                 }
             }
-            log.info('Email from lead: ', email);
-            sendMail(email);
+            log.info('Loaded lead: ', email);
+
+            insertLeads(database, data, function (result) {
+                if (result) {
+                    sendMail(email);
+                }
+            });
+
         }
     });
 });
@@ -133,7 +136,6 @@ function loadLeadDetails(leadId, callback) {
                         subject: 'Session has expired',
                         text: 'Error token at ' + new Date().getTime() + configuration.tokenErrorMail
                     };
-
                     sendMail(configuration.smtp.admin, mailOptions);
 
                 } else {
@@ -184,45 +186,44 @@ function sendMail(email, options) {
     });
 }
 
-/**@prod*/
+/**@prod Required to subscribe fo page RTUs */
 app.get('/platform', function (req, res) {
     res.sendFile(path.resolve('../view/platform.html'));
 });
 
-
-var insertDocuments = function(db, callback) {
-    // Get the documents collection
-    var collection = db.collection('documents');
-    // Insert some documents
-    collection.insertMany([
-        {a : 1}, {a : 2}, {a : 3}
-    ], function(err, result) {
-        assert.equal(err, null);
-        assert.equal(3, result.result.n);
-        assert.equal(3, result.ops.length);
-        console.log("Inserted 3 documents into the collection");
-        callback(result);
-    });
-}
+var insertLeads = function (db, data, callback) {
+    var collection = db.collection('leads');
+    collection.findOne({'id': data.id}, function (err, lead) {
+        if (lead) {
+            log.info(data.id + ' Lead exists');
+            callback(null)
+        } else {
+            collection.insert(data, function (err, result) {
+                assert.equal(err, null);
+                console.log('Lead inserted into document');
+                callback(result);
+            })
+        }
+    })
+};
 
 // Connection URL
 var url = 'mongodb://localhost:27017/fbhandler';
 
 // Use connect method to connect to the server
-MongoClient.connect(url, function(err, db) {
+MongoClient.connect(url, function (err, db) {
     assert.equal(null, err);
-    console.log("Connected successfully to server");
-    insertDocuments(db, function() {
-        db.close();
-    });
+    log.info("Connected successfully to server");
+    database = db;
+    var options = {
+        key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
+        cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
+    };
+    https.createServer(options, app).listen(8443);
+
+//uncomment for localhost
+//     http.createServer(app).listen(8000);
 });
 
 
-// var options = {
-//     key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
-//     cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
-// };
-// https.createServer(options, app).listen(8443);
 
-//uncomment for localhost
-http.createServer(app).listen(8000);
