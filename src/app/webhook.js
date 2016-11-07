@@ -240,7 +240,7 @@ function sendMail(email, options, callback) {
 
     var mailOptions = {
         from: configuration.smtp.sender,
-        to: email, //temporary for test mode
+        to: email, 
         bcc: [configuration.smtp.bcc, configuration.smtp.bcc2],
         subject: configuration.smtp.subject,
         html: template
