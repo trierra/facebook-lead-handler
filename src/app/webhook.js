@@ -45,49 +45,112 @@ app.get('/webhook/', function (req, res) {
 app.post('/webhook/', function (req, res) {
 
     var leadId = req.body.entry[0].changes[0].value.leadgen_id;
-    log.info('Loaded lead ' + leadId);
+    log.info('New lead ' + leadId);
 
-    if (leadId) {
-        loadLeadDetails(leadId, function (data) {
+    var leadDetails = {
+        email: '',
+        phoneNumber: '',
+        city: '',
+        fullName: '',
+        createdTime: '',
+        id: '',
+        emailSent: false
+    };
+
+    loadLeadDetails(leadId, function (data) {
             if (data) {
-                var email = '';
+
+                leadDetails.createdTime = data.created_time;
+                leadDetails.id = data.id;
+
                 for (var element in data.field_data) {
-                    if (data.field_data[element].name === 'email') {
-                        email = data.field_data[element].values[0];
+                    log.info(data.field_data[element]);
+                    switch (data.field_data[element].name) {
+                        case 'email':
+                            leadDetails.email = data.field_data[element].values[0];
+                            break;
+                        case 'phone_number':
+                            leadDetails.phoneNumber = data.field_data[element].values[0];
+                            break;
+                        case 'full_name':
+                            leadDetails.fullName = data.field_data[element].values[0];
+                            break;
+                        case 'city':
+                            leadDetails.city = data.field_data[element].values[0];
+                            break;
+                        default:
+                            log.warn('New data element in lead:' + data.field_data[element].name);
                     }
                 }
-                insertLeads(database, data, function (result) {
+                log.info(leadDetails);
+                insertLeads(database, leadDetails, function (result) {
                     if (result) {
-                        sendMail(email);
+                        sendMail(leadDetails.email, null, function (data) {
+                            log.info(data + '. Updating lead info...');
+                            updateLead(database, leadDetails, function () {
+                                log.info('Lead updatet for: ' + leadDetails.email);
+                            })
+                        });
                     }
                 });
             }
-        });
-    }
+        }
+    );
 });
 
 /**
  * test
  */
 app.get('/parse', function (req, res) {
-    loadLeadDetails('someLeadId', function (data) {
-        if (data) {
-            var email = '';
-            for (var element in data.field_data) {
-                if (data.field_data[element].name === 'email') {
-                    email = data.field_data[element].values[0];
+
+    var leadDetails = {
+        email: '',
+        phoneNumber: '',
+        city: '',
+        fullName: '',
+        createdTime: '',
+        id: '',
+        emailSent: false
+    };
+
+    loadLeadDetails('leadId', function (data) {
+            if (data) {
+                leadDetails.createdTime = data.created_time;
+                leadDetails.id = data.id;
+
+                for (var element in data.field_data) {
+                    log.info(data.field_data[element]);
+                    switch (data.field_data[element].name) {
+                        case 'email':
+                            leadDetails.email = data.field_data[element].values[0];
+                            break;
+                        case 'phone_number':
+                            leadDetails.phoneNumber = data.field_data[element].values[0];
+                            break;
+                        case 'full_name':
+                            leadDetails.fullName = data.field_data[element].values[0];
+                            break;
+                        case 'city':
+                            leadDetails.city = data.field_data[element].values[0];
+                            break;
+                        default:
+                            log.warn('New data element in lead:' + data.field_data[element].name);
+                    }
                 }
+                log.info(leadDetails);
+                insertLeads(database, leadDetails, function (result) {
+                    if (result) {
+                        sendMail(leadDetails.email, null, function (data) {
+                            log.info(data + '. Updating lead info...');
+                            updateLead(database, leadDetails, function () {
+                                log.info('Lead updatet for: ' + leadDetails.email);
+                            })
+                        });
+                    }
+                });
             }
-            log.info('Loaded lead: ', email);
-
-            insertLeads(database, data, function (result) {
-                if (result) {
-                    sendMail(email);
-                }
-            });
-
         }
-    });
+    );
 });
 
 app.post('/callback/', function (req, res) {
@@ -136,7 +199,10 @@ function loadLeadDetails(leadId, callback) {
                         subject: 'Session has expired',
                         text: 'Error token at ' + new Date().getTime() + configuration.tokenErrorMail
                     };
-                    sendMail(configuration.smtp.admin, mailOptions);
+
+                    sendMail(configuration.smtp.admin, mailOptions, function (data) {
+                        log.info(data);
+                    });
 
                 } else {
                     log.error(data.error.message);
@@ -155,7 +221,8 @@ function buildUrl(leadId) {
         '&format=json&method=get&pretty=0&suppress_http_code=1';
 }
 
-function sendMail(email, options) {
+function sendMail(email, options, callback) {
+
     log.info('sending mail to ' + email);
 
     var transporter = nodemailer.createTransport(sesTransport({
@@ -180,9 +247,10 @@ function sendMail(email, options) {
 // send mail with defined transport object
     transporter.sendMail(options, function (error, info) {
         if (error) {
-            return log.error(error);
+            log.error(error);
+        } else {
+            callback('Message sent: to ' + email);
         }
-        log.info('Message sent: to ' + email + ' ' + info.response);
     });
 }
 
@@ -193,28 +261,39 @@ app.get('/platform', function (req, res) {
 
 var insertLeads = function (db, data, callback) {
     var collection = db.collection('leads');
-    collection.findOne({'id': data.id}, function (err, lead) {
+    collection.findOne({'data.id': data.id}, function (err, lead) {
+        assert.equal(err, null);
         if (lead) {
-            log.info(data.id + ' Lead exists');
+            log.info(data.id + ' Lead exists ' + lead.data.email);
             callback(null)
         } else {
             collection.insert(data, function (err, result) {
                 assert.equal(err, null);
-                console.log('Lead inserted into document');
+                log.info('Lead inserted into document');
                 callback(result);
             })
         }
     })
 };
 
+var updateLead = function (db, data, callback) {
+    var collection = db.collection('leads');
+    log.info('updating ', data.id);
+    collection.update({'id': data.id}, {$set: {'emailSent': true}}, function () {
+        callback('Lead \'' + data.email + '\' updated')
+    });
+};
+
 // Connection URL
-var url = 'mongodb://localhost:27017/fbhandler';
+var mongoUrl = configuration.mongodb;
 
 // Use connect method to connect to the server
-MongoClient.connect(url, function (err, db) {
+MongoClient.connect(mongoUrl, function (err, db) {
+
     assert.equal(null, err);
-    log.info("Connected successfully to server");
+    log.info("Connected successfully to mongodb server");
     database = db;
+
     var options = {
         key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
         cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
