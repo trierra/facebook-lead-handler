@@ -16,3 +16,4 @@ src.tar.gz
 src/config/*
 src/logfile.log
 src/somefile.log
+app/mail.html

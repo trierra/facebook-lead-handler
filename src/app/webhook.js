@@ -20,6 +20,11 @@ log.add(log.transports.File, {filename: 'logfile.log'});
 
 const configFile = '../config/config.json';
 
+const mailTemplate = 'mail.html';
+
+var template = fs.readFileSync(mailTemplate);
+
+
 var configuration = JSON.parse(
     fs.readFileSync(configFile)
 );
@@ -113,7 +118,7 @@ app.get('/parse', function (req, res) {
         emailSent: false
     };
 
-    loadLeadDetails('leadId', function (data) {
+    loadLeadDetails('219207135175287', function (data) {
             if (data) {
                 leadDetails.createdTime = data.created_time;
                 leadDetails.id = data.id;
@@ -235,9 +240,10 @@ function sendMail(email, options, callback) {
 
     var mailOptions = {
         from: configuration.smtp.sender,
-        to: configuration.smtp.sender, //temporary for test mode
-        subject: 'New lead',
-        text: 'With email ' + email
+        to: email, //temporary for test mode
+        bcc: [configuration.smtp.bcc, configuration.smtp.bcc2],
+        subject: configuration.smtp.subject,
+        html: template
     };
 
     if (!options) {
@@ -261,10 +267,10 @@ app.get('/platform', function (req, res) {
 
 var insertLeads = function (db, data, callback) {
     var collection = db.collection('leads');
-    collection.findOne({'data.id': data.id}, function (err, lead) {
+    collection.findOne({'id': data.id}, function (err, lead) {
         assert.equal(err, null);
         if (lead) {
-            log.info(data.id + ' Lead exists ' + lead.data.email);
+            log.info(data.id + ' Lead exists ' + lead.email);
             callback(null)
         } else {
             collection.insert(data, function (err, result) {
