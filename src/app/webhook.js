@@ -300,14 +300,14 @@ MongoClient.connect(mongoUrl, function (err, db) {
     log.info("Connected successfully to mongodb server");
     database = db;
 
-    // var options = {
-    //     key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
-    //     cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
-    // };
-    // https.createServer(options, app).listen(8443);
+    var options = {
+        key: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/privkey.pem'),
+        cert: fs.readFileSync('/etc/letsencrypt/live/willingbot.online/fullchain.pem')
+    };
+    https.createServer(options, app).listen(8443);
 
 //uncomment for localhost
-    http.createServer(app).listen(8000);
+//     http.createServer(app).listen(8000);
 });
 
 
