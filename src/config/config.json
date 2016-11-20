@@ -1,0 +1,31 @@
+{
+  "smtp": {
+    "host": "AMAZON_HOST",
+    "auth": {
+      "user": "AMAZON_USER",
+      "pass": "AMAZON_PASS"
+    },
+    "accessKey": "AMAZON_ACCESS_KEY",
+    "secret": "AMAZON_SECRET",
+    "region": "us-west-2",
+    "sender": "sender.mail@blabla.co,",
+    "admin": "admin.mail@blabla.com",
+    "bcc": "",
+    "bcc2": "",
+    "subject":"Welcome!"
+  },
+  "fbAuth": {
+    "clientId": "FB_CLIENTID",
+    "secret": "FB_SECRET"
+  },
+  "pageId": {
+    "id": "PAGE_ID"
+  },
+  "formId": {
+    "id": "FORM_ID_FOR_LEADS"
+  },
+  "webhookVerification": "some_phrase",
+  "tokenErrorMail": "SOME_MESSAGE",
+  "longToken": "long-term-token",
+  "mongodb": "mongodb://localhost:27017/mydb"
+}

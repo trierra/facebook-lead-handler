@@ -13,7 +13,6 @@ node_modules/
 /.idea/
 src/app/logfile.log
 src.tar.gz
-src/config/*
 src/logfile.log
 src/somefile.log
 app/mail.html
