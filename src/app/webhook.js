@@ -171,8 +171,12 @@ app.post('/callback/', function (req, res) {
     };
 
     request(options, function (error, response, body) {
-        if (!error && response.status == 200) {
-            log.warn('Long-term access token retrieved: ' + body + ' at ' + new Date().getTime());
+        if (!error && response.statusCode == 200) {
+            //TODO: Store token to db
+            log.warn('Long-term access token retrieved: ' + JSON.parse(body).access_token + ' at ' + new Date().getTime());
+            longToken = JSON.parse(body).access_token
+        }else {
+            log.warn(error, response);
         }
     })
 });
@@ -196,7 +200,7 @@ function loadLeadDetails(leadId, callback) {
             var data = JSON.parse(body);
             if (data.error) {
                 if (data.error.message.includes('Error validating access token') || data.error.message.includes('Invalid OAuth access token')) {
-                    log.warn('Session has expired, refreshing token on ' + new Date().getTime());
+                    log.warn('Session has expired, refreshing token '+ longToken+ ' on ' + new Date().getTime());
 
                     var mailOptions = {
                         from: configuration.smtp.admin,
