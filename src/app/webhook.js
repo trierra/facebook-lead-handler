@@ -18,7 +18,7 @@ var database = '';
 log.level = 'debug';
 log.add(log.transports.File, {filename: 'logfile.log'});
 
-const configFile = '../config/config.json';
+const configFile = '../config/config_orig.json';
 
 const mailTemplate = 'mail.html';
 
