@@ -195,7 +195,7 @@ function loadLeadDetails(leadId, callback) {
         if (!error && response.statusCode == 200) {
             var data = JSON.parse(body);
             if (data.error) {
-                if (data.error.message.includes('Error validating access token')) {
+                if (data.error.message.includes('Error validating access token') || data.error.message.includes('Invalid OAuth access token')) {
                     log.warn('Session has expired, refreshing token on ' + new Date().getTime());
 
                     var mailOptions = {
