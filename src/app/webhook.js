@@ -199,7 +199,7 @@ function loadLeadDetails(leadId, callback) {
                     log.warn('Session has expired, refreshing token on ' + new Date().getTime());
 
                     var mailOptions = {
-                        from: configuration.smtp.service,
+                        from: configuration.smtp.admin,
                         to: configuration.smtp.admin, //temporary for test mode
                         subject: 'Session has expired',
                         text: 'Error token at ' + new Date().getTime() + configuration.tokenErrorMail
